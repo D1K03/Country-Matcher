@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Country and Flag Matching Game</title>
+        <style>
+            body {
+                background-color: grey;
+            }
+
+            main {
+                font-family: cursive;
+                background-color: antiquewhite;
+                display: flex;
+                flex-direction: column;
+                justify-content: center;
+                align-items: center;
+                border:5px dashed chocolate;
+           }
+
+           h1 {
+            color:brown;
+            text-align: center;
+           }
+
+           fieldset {
+            border:none;
+            text-align: center;
+            color:brown;
+            margin: 15px 0px 15px;
+           }
+
+           legend {
+                font-size: 150%;
+                margin-bottom: 10px;
+                font-weight: bolder;
+                text-align: center;
+                width: 100%;
+           }
+
+           label {
+            margin: 5px;
+           }
+
+           .flag {
+            border: 2px solid brown;
+            border-radius: 5%;
+            text-align: center;
+            padding: 10px;
+            margin: 5px;
+            cursor: pointer;
+           }
+           
+           .attempt {
+            border: 4px solid red;
+            }
+            
+            .matched {
+            border: 4px solid greenyellow;
+            pointer-events: none;
+            }
+
+           .countries, .answers {
+                display: grid;
+                grid-template-columns: repeat(4, 1fr);
+                margin-top: 15px;
+                width: 100%;
+                max-width: 600px;
+                gap: 15px;
+           }
+
+           .countryfacts {
+            border: 2px solid brown;
+            border-radius: 5%;
+            text-align: center;
+           }
+
+           .country {
+            width: 100%;
+            height: auto;
+            max-height: 150px;
+            border: 1px;
+            border-style:solid;
+            border-radius: 5%;
+            object-fit: cover;
+    
+           }
+
+           #score, #success {
+            color:green;
+            text-align: center;
+            font-family: cursive;
+            font-weight: bolder;
+            margin: 25px;
+           }
+
+           #reveal {
+            color:antiquewhite;
+            background-color: brown;
+            border:none;
+            border-radius: 5px;
+            justify-content: center;
+           }
+
+           .wrapper3 {
+                display: none;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                margin-bottom: 15px;
+            }
+        </style>
+
+        <script src="https://code.jquery.com/jquery-3.7.1.min.js" integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+        <script src="https://code.jquery.com/ui/1.14.1/jquery-ui.min.js" integrity="sha256-AlTido85uXPlSyyaZNsjJXeCs07eSv3r43kyCVc8ChI=" crossorigin="anonymous"></script>
+    
+        <script>
+            let chosenRegion;
+            let chosenSize;
+            let winCountries = [];
+            let countryData = '';
+            let matches = 0;
+    
+            $(document).ready(function () {
+                //Radio buttons start off unchecked
+                $('input[type="radio"]').prop('checked', false);
+                
+                //Runs function if a value from the region radio buttons is selected
+                $('input[name="region"]').on('change', function() {
+                        chosenRegion = $(this).val();
+                        resetGame();
+                        $('input[type="radio"][name="boardsize"]').prop('checked', false);
+                        $('.wrapper2').show();
+                });
+    
+                //Runs function if a value from the board size radio buttons is selected
+                $('input[name="boardsize"]').on('change', function() {
+                        chosenSize = $(this).val();
+                        resetGame();
+                        $('.wrapper3').css('display', 'flex');
+                        fetchCountries(chosenRegion);
+                });
+    
+                //On click of the Show Answer button will reveal the correct matches
+                $('#reveal').click(function () {
+                    revealAnswer(winCountries);
+                });
+    
+                /*
+                Fetches data from API
+                Parses the JSON string so that the data is converted to an array
+                Data becomes easy to manipulate
+                */
+                function fetchCountries(region) {
+                    $.getJSON(`https://www.cs.kent.ac.uk/people/staff/yh/api/country-data/countries/region/${region}`, (data) => {
+                        countryData = data;
+                        createGame();
+                    });
+                }
+    
+                
+                /*
+                boardSize is set 8 if chosenSize with value 4x2 is selected, else boardSize is set to 16
+                Random shuffle done with 0.5 then is sliced to get the data for the selecting options
+                This is split so seperate the country name and capital from the flag
+                The data is appended into the div of countries class
+                */
+                function createGame() {
+                    let countryOptions = [];  
+                    let boardSize = chosenSize === '4x2' ? 8 : 16;
+                    winCountries = countryData.sort(() => 0.5 - Math.random()).slice(0, boardSize / 2);
+    
+                    winCountries.forEach(country => {
+                        countryOptions.push(createFlag(country.name, country.capital));
+                        countryOptions.push(createFlag(country.flag));
+                    });
+    
+                    countryOptions = countryOptions.sort(() => 0.5 - Math.random());
+                    $('.countries').empty().append(countryOptions);
+                    checkChoices(winCountries);
+                }
+    
+                /*
+                Resets the game
+                Sets the matches to 0 and hides parts of UI depending of whether region or board size is selected
+                winCountries is emptied so that new answers may be stored
+                */
+                function resetGame() {
+                    winCountries = [];
+                    matches = 0;
+                    $('#score').text("Number of Matches: 0");
+                    $('#success').hide();
+                    
+                    $('.countries').empty();
+                    $('.answers').hide().empty();
+                    
+                    $('.wrapper3').hide();
+                }
+    
+                /*
+                If the createFlag takes two parameters it must be country name and capital
+                Else the flag source is the only parameter passed through
+                */
+                function createFlag(country, capital = '') {
+                    if (capital) {
+                        return `<div class="flag" data-content="${country}"><p>${country}</p><p>${capital}</p></div>`;
+                    } else {
+                        return `<div class="flag" data-content="${country}"><img src="${country}" alt="Image Failed" style="width:100px; height:auto;"></div>`;
+                    }
+                }
+    
+                /*
+                If either the flag or flag information is clicked the css style .attempt will be toggled on it
+                This updates the border colour of the options as an attempt, with red
+                It then calls on updateMatches function, passing the choice, which is the winCountries data
+                */
+                function checkChoices(choice) {
+                    $('.flag').click(function() {
+                        $(this).toggleClass('attempt');
+                        updateMatches(choice);
+                    });
+                }
+    
+                /*
+                If two clicks have been made by the user on the options, a comparison will be made on the data-content of the options
+                For each option in the winCountries data if both option1 and option2 are held in map then, the attempt border will be removed
+                Attempt border will be replaced with matched border, which is green to indicate of correct answer
+                Successful answer will increment the matches variable
+                When there are no matches in the attempted (winCountries) array it will remove the attempt highlight from the options selected
+                */
+                function updateMatches(attempted) {
+                    
+                    let attemptedChoices = $('.attempt');
+                    if (attemptedChoices.length === 2) {
+                        let option1 = $(attemptedChoices[0]).data('content');
+                        let option2 = $(attemptedChoices[1]).data('content');
+                
+                        attempted.forEach(choice => {
+                            if ((choice.name == option1 && choice.flag == option2) || (choice.flag == option1 && choice.name == option2)) {
+                                attemptedChoices.addClass('matched').removeClass('attempt');
+                                matches++;
+                                $('#score').text(`Number of Matches: ${matches}`);
+                                if (matches == attempted.length) {
+                                    $('#success').show();
+                                }
+                            } else {
+                                setTimeout(() => {attemptedChoices.removeClass('attempt');}, 250);
+                        }
+                        });
+    
+                    }   
+                }
+    
+                /*
+                If 'Show Answer' is clicked the complete country data will be appended to the answers class then display will be shown
+                The IF statement is used to check whether the data in the answers class is visible so that multiple duplicates cannot be created
+                */
+                function revealAnswer(choices) {
+                    if (!$('.answers').is(':visible')) {
+                        choices.forEach(choice => {
+                        $('.answers').append(`<div class="countryfacts"><p>${choice.name}</p><p>${choice.capital}</p><img src="${choice.flag}" alt="Image Failed" style="width:100px; height:auto;"><div>`);
+                        });
+                        $('.answers').show();
+                    }
+                }
+    
+            });
+        </script>
+    </head>
+    <body>
+        <main>
+            <h1>Match Countries with their Flags</h1>
+
+            <!--Section for Region selection-->
+            <fieldset>
+                <legend>Select a Region:</legend>
+                <label><input type="radio" name="region" value="Africa">Africa</label>
+                <label><input type="radio" name="region" value="Asia">Asia</label>
+                <label><input type="radio" name="region" value="Europe">Europe</label>
+                <label><input type="radio" name="region" value="Americas">Americas</label>
+                <label><input type="radio" name="region" value="Oceania">Oceania</label>
+            </fieldset>
+   
+
+            <div class="wrapper2" style="display: none;">
+                <!--Section for Board Size selection-->
+                <fieldset>
+                    <legend>Choose the Board Size</legend>
+                    <label><input type="radio" name="boardsize" value="4x2">4 x 2</label>
+                    <label><input type="radio" name="boardsize" value="4x4">4 x 4</label>
+                </fieldset>
+            </div>
+
+            <div class="wrapper3">
+                <div class="countries">
+                    <!--Randomly generated countries go in here-->
+                </div>
+                <p id="score">Number of Matches: 0</p>
+                <button id="reveal">Show Answer</button>
+            </div>
+
+            <p id="success" style="display: none;">Congratulations! You've matched all the countries!</p>
+
+            <div class="answers" style="display: none; margin-bottom: 15px;">
+                <!--Country flags from show answers go in here-->                
+            </div>
+    </main>
+    </body>
+</html>
